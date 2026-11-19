@@ -1,0 +1,13 @@
+# Generated output: the page is produced by the program, not committed.
+out/
+/output/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# local scratch
+*.png.tmp
