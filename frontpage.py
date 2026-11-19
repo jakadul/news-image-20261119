@@ -47,9 +47,9 @@ BAND_HEADLINE = (190, 330)              # kicker + headline + deck
 BAND_TIMELINE = (330, 420)              # the day in UTC, 6 beats
 BAND_FEATURES = (420, 560)              # 4 feature cards
 BAND_GRID = (560, 1366)                 # 3 cols x 7 rows = 21 cards
-BAND_STRIP = (1366, 1478)               # 16 numbered items, 4 columns
-BAND_INDEX = (1478, 1545)               # region + topic counts
-BAND_FOOT = (1545, 1600)                # folio
+BAND_STRIP = (1366, 1452)               # 16 numbered items, 4 columns
+BAND_INDEX = (1452, 1540)               # region index + DATE CHECK
+BAND_FOOT = (1540, 1600)                # folio
 
 GRID_COLS = 3
 GRID_ROWS = 7
@@ -158,9 +158,10 @@ LEAD_KICKER = "APEC \u00b7 TRILATERAL THURSDAY \u00b7 SHENZHEN + THE GULF"
 LEAD_HEADLINE = ("Trump, Xi and Putin Meet in Shenzhen as Iran Strikes "
                  "Across the Gulf")
 LEAD_DECK = (
-    "Three leaders sit down in Shenzhen on Thursday while American strikes "
-    "and Iranian retaliation run through a third week of Gulf war, and "
-    "Kyiv watches a peace it was not invited to shape."
+    "Three leaders sit down in Shenzhen while American strikes and Iranian "
+    "retaliation run through a third week of Gulf war, Kyiv watches a peace "
+    "it was not invited to shape, GTA VI unlocks at midnight and Anthropic "
+    "completes the largest listing on record."
 )
 LEAD_BYLINE = "BY THE WORLD WIRE DESK \u00b7 SHENZHEN / WASHINGTON / KUWAIT"
 
@@ -265,12 +266,12 @@ STRIP_ITEMS = (
      "CONFIRMED", "ALLAFRICA"),
     ("GLOBAL \u00b7 SCIENCE", "AHA and West Health collaborate with BD on data",
      "CONFIRMED", "AHA"),
-    ("GLOBAL \u00b7 SPORT", "Champions League matchday 4; NFL week slips",
-     "CONFIRMED", "UEFA"),
+    ("AMERICAS \u00b7 GAMES", "GTA VI unlocks at midnight; 15.9m pre-orders banked",
+     "CONFIRMED", "ROCKSTAR"),
     ("GLOBAL \u00b7 SOCIETY", "Children's Nobel Peace Prize awarded in the UK",
      "REPORTED", "RTP"),
-    ("GLOBAL \u00b7 ASTRONOMY", "Voyager 1 remains one light-day from Earth",
-     "CONFIRMED", "NASA / JPL"),
+    ("GLOBAL \u00b7 MARKETS", "Anthropic prices at $83; $81.3bn raised, biggest IPO",
+     "CONFIRMED", "NASDAQ / FT"),
     ("AFRICA \u00b7 DIPLOMACY", "Sierra Leone summit: four agreements signed",
      "CONFIRMED", "XINHUA"),
 )
@@ -283,6 +284,29 @@ _FEATURE_REGIONS = ("GLOBAL", "MIDDLE EAST", "AMERICAS", "MIDDLE EAST")
 
 _REGION_ORDER = ("MIDDLE EAST", "ASIA", "EUROPE", "AMERICAS", "AFRICA",
                  "OCEANIA", "GLOBAL")
+
+# One headline figure per region, shown large in the ribbon under the counts.
+REGION_FIGURES = {
+    "MIDDLE EAST": "3 carriers",
+    "ASIA": "21 economies",
+    "EUROPE": "COP31",
+    "AMERICAS": "15.9m GTA VI",
+    "AFRICA": "11k Ebola",
+    "OCEANIA": "1 light-day",
+    "GLOBAL": "$81.3bn IPO",
+}
+
+# Items that happened or were first reported on Wednesday 18 November, so they are
+# deliberately NOT counted as Thursday's news. Printed in the red DATE CHECK box:
+# the page shows its own date discipline instead of padding the count.
+DATE_CHECK = (
+    "Iranian drone interceptions over the Gulf",
+    "EU's proposed \u20ac45bn loan for Ukraine",
+    "House Democrats' vote nominating Jeffries",
+    "Voyager 1 crossing one light-day, 10:16 GMT Wed",
+    "Peltola's Alaska call",
+    "First COP31 draft, Monday",
+)
 
 
 def _tally_regions() -> Tuple[Tuple[str, int], ...]:
@@ -520,8 +544,32 @@ def _features(c: Canvas, audit: list) -> float:
         c.tracked(x + 9.0, lab_base, label, lab,
                   SZ_FEAT_LABEL * TRACK_KICKER, fill=RED)
 
+        # motif strip sits between the label and the headline: 22px of flat vector
+        mx = x + 9.0
+        mw = FEAT_W - 18.0
+        my = lab_base + 4.0
+        mh = 20.0
+        if label == "TRILATERAL":
+            bw = mw / 3.0
+            for k, col in enumerate(((24, 22, 20), (150, 30, 28), (78, 73, 66))):
+                c.rect(mx + k * bw, my, mx + k * bw + bw - 2.0, my + mh, fill=col)
+        elif label == "GULF WAR":
+            c.rect(mx, my + 8.0, mx + mw, my + 12.0, fill=INK_SOFT)
+            c.rect(mx + mw * 0.15, my, mx + mw * 0.15 + 3.0, my + mh, fill=RED)
+            c.rect(mx + mw * 0.62, my, mx + mw * 0.62 + 3.0, my + mh, fill=RED)
+        elif label == "US MIDTERMS":
+            steps = 5
+            sw = mw / steps
+            for k in range(steps):
+                hgt = mh * (0.35 + 0.15 * k)
+                c.rect(mx + k * sw + 2.0, my + mh - hgt,
+                       mx + k * sw + sw - 4.0, my + mh, fill=INK_SOFT)
+        elif label == "IRAN ARMS":
+            c.rect(mx, my + 4.0, mx + mw, my + 8.0, fill=RED)
+            c.rect(mx, my + 13.0, mx + mw, my + 17.0, fill=RED)
+
         head_f = c.type.get("serif", "bold", SZ_FEAT_HEAD)
-        hy = lab_base + 10.0 + c.cap_height(head_f)
+        hy = my + mh + 6.0 + c.cap_height(head_f)
         lines = c.wrap(text, head_f, FEAT_W - 18.0)
         for line in lines[:4]:
             c.text(x + 9.0, hy, line, head_f, fill=INK)
@@ -625,8 +673,38 @@ def _index(c: Canvas, audit: list) -> float:
         c.tracked(x + 6.0, cell_top + 13.0, name, nm, 0.04, fill=INK)
         big = c.type.get("serif", "bold", 16.0)
         c.text(x + 6.0, cell_top + 29.0, "%d" % count, big, fill=RED)
+        nw = c.width("%d" % count, big)
+        fig = REGION_FIGURES.get(name)
+        if fig:
+            ff = c.type.get("sans", "bold", 7.6)
+            c.tracked(x + nw + 5.0, cell_top + 28.0, fig, ff,
+                      0.02, fill=INK_SOFT)
         audit.append(("region_cell", c.width(name, nm) + 12.0, cell_w - 6.0))
         audit.append(("region_cell_h", cell_top + 34.0, float(BAND_INDEX[1])))
+
+    # DATE CHECK: the items the page deliberately leaves out because they were first
+    # reported on Wednesday 18 November. Showing the exclusion is the date discipline
+    # the page is built to demonstrate.
+    dc_f = c.type.get("sans", "bold", 7.2)
+    dc_head = c.type.get("sans", "bold", 8.2)
+    dc_x0 = CONTENT_X0
+    dc_y0 = cell_top + 38.0
+    dc_y1 = BAND_INDEX[1] - 3.0
+    if dc_y1 > dc_y0 + 14.0:
+        c.rect(dc_x0, dc_y0, CONTENT_X1, dc_y1, fill=None, outline=RED, width=1.2)
+        hb = dc_y0 + 8.5
+        c.tracked(dc_x0 + 5.0, hb,
+                  "DATE CHECK \u00b7 FIRST REPORTED WED 18 NOV \u00b7 NOT COUNTED HERE",
+                  dc_head, 0.03, fill=RED)
+        items = "  \u00b7  ".join(DATE_CHECK)
+        lines = c.wrap(items, dc_f, CONTENT_W - 10.0)
+        ly = hb + 8.0
+        for line in lines:
+            if ly > dc_y1 - 1.5:
+                break
+            c.text(dc_x0 + 5.0, ly, line, dc_f, fill=INK_SOFT)
+            audit.append(("datecheck_w", c.width(line, dc_f), CONTENT_W - 10.0))
+            ly += 7.6
     return BAND_INDEX[1]
 
 
