@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 from typing import Dict, List, Optional, Tuple
 
+from canvas import Canvas as _Raster, downsample, write_png
 from textadapter import PageCanvas, Type as _TypeBase
 
 # --------------------------------------------------------------------------
@@ -29,6 +30,8 @@ from textadapter import PageCanvas, Type as _TypeBase
 
 PAGE_W = 1200
 PAGE_H = 1600
+OUT_W = 768
+OUT_H = 1024
 SS = 4                                   # supersample factor for the raster
 
 MARGIN_X = 40
@@ -370,7 +373,7 @@ def _hrule(c: Canvas, y: float, width: float = 1.0, colour=INK) -> None:
 def _masthead(c: Canvas, audit: list) -> float:
     """Strapline, double rule, then the date at poster scale."""
     top = 34.0
-    strap = c.type.get("sans", "bold", 9.6)
+    strap = c.type.get("sans", "bold", 12.5)
     left = c.tracked(CONTENT_X0, top, "THE WORLD IN ONE DAY", strap, 1.4,
                      fill=INK)
     audit.append(("strap_left", left, CONTENT_W))
@@ -381,7 +384,7 @@ def _masthead(c: Canvas, audit: list) -> float:
     rule_y = top + 9.0
     _hrule(c, rule_y, width=2.0)
 
-    size = 82.0
+    size = 116.0
     display = c.type.get("serif", "bold", size)
     while size > 44.0 and max(c.width(line, display) for line in DAY_TITLE) > CONTENT_W:
         size -= 2.0
@@ -394,7 +397,7 @@ def _masthead(c: Canvas, audit: list) -> float:
         audit.append(("day_line", width, CONTENT_W))
         baseline += size * 0.94
 
-    sub_font = c.type.get("serif", "italic", 15.0)
+    sub_font = c.type.get("serif", "italic", 19.0)
     sub_y = baseline - size * 0.94 + 14.0 + c.cap_height(sub_font)
     for line in c.wrap(LEAD_SUB, sub_font, CONTENT_W)[:2]:
         c.text(CONTENT_X0, sub_y, line, sub_font, fill=INK_SOFT)
@@ -409,12 +412,12 @@ def _masthead(c: Canvas, audit: list) -> float:
 
 
 def _ribbon(c: Canvas, top: float, audit: list) -> float:
-    height = 68.0
+    height = 96.0
     seg_w = CONTENT_W / 7.0
     c.rect(CONTENT_X0, top, CONTENT_X1, top + height, outline=INK, width=2.0)
-    lab_font = c.type.get("sans", "bold", 8.0)
-    big_font = c.type.get("sans", "bold", 19.0)
-    cap_font = c.type.get("sans", "regular", 6.8)
+    lab_font = c.type.get("sans", "bold", 11.5)
+    big_font = c.type.get("sans", "bold", 30.0)
+    cap_font = c.type.get("sans", "regular", 9.4)
 
     for i, (name, figure, caption) in enumerate(RIBBON):
         x0 = CONTENT_X0 + i * seg_w
@@ -485,10 +488,10 @@ def _hero_art(c: Canvas, kind: str, x0: float, y0: float, w: float,
 
 
 def _heroes(c: Canvas, top: float, audit: list) -> float:
-    art_h = 128.0
-    num_font = c.type.get("serif", "bold", 28.0)
-    head_font = c.type.get("serif", "bold", 17.0)
-    body_font = c.type.get("sans", "regular", 8.4)
+    art_h = 190.0
+    num_font = c.type.get("serif", "bold", 38.0)
+    head_font = c.type.get("serif", "bold", 25.0)
+    body_font = c.type.get("sans", "regular", 11.8)
     deepest = top
 
     for i, (kind, headline, body) in enumerate(HEROES):
@@ -521,11 +524,11 @@ def _heroes(c: Canvas, top: float, audit: list) -> float:
 
 
 def _briefs(c: Canvas, top: float, audit: list) -> float:
-    kicker_font = c.type.get("sans", "bold", 7.2)
-    head_font = c.type.get("serif", "bold", 12.0)
-    body_font = c.type.get("sans", "regular", 7.6)
+    kicker_font = c.type.get("sans", "bold", 10.0)
+    head_font = c.type.get("serif", "bold", 17.0)
+    body_font = c.type.get("sans", "regular", 10.4)
     rows = (len(BRIEFS) + BRIEF_COLS - 1) // BRIEF_COLS
-    cell_h = 84.0
+    cell_h = 118.0
     _hrule(c, top, width=2.0)
 
     for i, (kicker, headline, body) in enumerate(BRIEFS):
@@ -668,22 +671,60 @@ def _compose(c: Canvas, audit: list) -> None:
 
 
 def render_page(audit: Optional[list] = None):
-    """Draw the whole page and return the downsampled RGB image."""
+    """Draw the page, then fit it inside the contest's 1024-pixel cap.
+
+    The page composes at PAGE_W x PAGE_H so the type is drawn at legible
+    sizes, then a box filter reduces it to OUT_W x OUT_H: the gate allows at
+    most 1024 by 1024 pixels and 1 MiB, so the output is 768 x 1024.
+    """
     report: list = audit if audit is not None else []
     canvas = Canvas(SS)
     _compose(canvas, report)
     report.append(("story_count", story_count(), 47))
-    return canvas.image.resize((PAGE_W, PAGE_H))
+    page = downsample(canvas.canvas, SS)   # PAGE_W x PAGE_H raster
+    return _fit(page, OUT_W, OUT_H)
+
+
+def _fit(page, out_w: int, out_h: int):
+    """Integer box filter from the composed page to the output raster."""
+    src_w, src_h = page.w, page.h
+    src = page.buf
+    out = _Raster(out_w, out_h, scale=1, background=PAPER)
+    dst = out.buf
+    xr = src_w / float(out_w)
+    yr = src_h / float(out_h)
+    for y in range(out_h):
+        y0 = int(y * yr)
+        y1 = min(src_h, max(y0 + 1, int((y + 1) * yr)))
+        row_out = y * out_w * 3
+        for x in range(out_w):
+            x0 = int(x * xr)
+            x1 = min(src_w, max(x0 + 1, int((x + 1) * xr)))
+            r = g = b = 0
+            n = 0
+            for sy in range(y0, y1):
+                base = (sy * src_w) * 3
+                for sx in range(x0, x1):
+                    i = base + sx * 3
+                    r += src[i]
+                    g += src[i + 1]
+                    b += src[i + 2]
+                    n += 1
+            o = row_out + x * 3
+            dst[o] = r // n
+            dst[o + 1] = g // n
+            dst[o + 2] = b // n
+    return out
 
 
 def save_page(path: str, audit: Optional[list] = None) -> Tuple[int, int]:
     """Render and write the page.  Returns (width, height)."""
-    image = render_page(audit=audit)
+    page = render_page(audit=audit)
     directory = os.path.dirname(os.path.abspath(path))
     if directory:
         os.makedirs(directory, exist_ok=True)
-    image.save(path, format="PNG")
-    return image.width, image.height
+    write_png(path, page)
+    return page.design_w, page.design_h
 
 
 def overruns(audit, tolerance: float = 0.5) -> List[Tuple[str, float, float]]:
