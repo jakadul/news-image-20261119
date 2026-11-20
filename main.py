@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 ARTWORK = "entry.png"
-ARTWORK_BYTES = 155283
+ARTWORK_BYTES = 155245
 
 
 def resolve_output_dir() -> Path:
