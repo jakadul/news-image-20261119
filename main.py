@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 ARTWORK = "entry.png"
+ARTWORK_BYTES = 155283
 
 
 def resolve_output_dir() -> Path:
@@ -40,6 +41,10 @@ def main() -> int:
     shutil.copyfile(src, dst)
 
     size = dst.stat().st_size
+    if size != ARTWORK_BYTES:
+        raise SystemExit(
+            f"artwork size mismatch: copied {size} bytes, expected {ARTWORK_BYTES}"
+        )
     print(f"installed {dst} ({size} bytes)")
     return 0
 
