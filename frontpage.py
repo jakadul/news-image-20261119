@@ -42,9 +42,9 @@ CONTENT_W = CONTENT_X1 - CONTENT_X0
 BAND_STRAP = (0.0, 30.0)
 BAND_MAST = (30.0, 140.0)
 BAND_TIME = (140.0, 200.0)
-BAND_ROW3 = (210.0, 462.0)
-BAND_ROW4 = (472.0, 640.0)
-BAND_MAP = (650.0, 950.0)
+BAND_ROW3 = (206.0, 556.0)
+BAND_ROW4 = (556.0, 556.0)
+BAND_MAP = (566.0, 946.0)
 BAND_FOOT = (958.0, 1024.0)
 
 # --------------------------------------------------------------------------
@@ -146,17 +146,15 @@ LEADS = (
 )
 
 SECONDS = (
-    ("court", "The Hague \u00b7 Law", "World Court rules on Myanmar's Rohingya case",
+    ("court", "The Hague · Law", "World Court rules on Myanmar's Rohingya case",
      "The ICJ reads its judgment in The Gambia's case."),
-    ("ipo", "Americas \u00b7 IPO", "Anthropic debuts in the biggest IPO on record",
+    ("ipo", "Americas · IPO", "Anthropic debuts in the biggest IPO on record",
      "Priced above range, raising $81.3bn near a $1.5tn value."),
-    ("gaza", "Middle East \u00b7 Gaza", "Israeli tanks cross the Yellow Line in a rare raid",
-     "Hamas calls it a truce breach; strikes kill five despite the deal."),
-    ("storm", "Asia \u00b7 Weather", "Cyclone Akvan bears down as 200,000 flee",
-     "Red alerts in 11 districts; landfall near Puri due Friday."),
 )
 
 MORE = (
+    ("Gaza", "Israeli tanks cross the Yellow Line in a rare raid; Hamas calls it a truce breach"),
+    ("Puri", "Cyclone Akvan bears down as 200,000 flee; red alerts in 11 districts"),
     ("Antalya", "COP31 enters its final 48 hours"),
     ("Shenzhen", "APEC adopts the Shenzhen Declaration"),
     ("Kuwait", "Iran strikes US bases; drones downed"),
@@ -199,7 +197,7 @@ FOOT_SOURCES = ("SOURCES: REUTERS \u00b7 AP \u00b7 AFP \u00b7 BBC \u00b7 KYODO "
 
 
 def story_count() -> int:
-    """Stories counted from the card lists: 6 timeline beats, 3 leads, 4 seconds, 29 more."""
+    """Stories counted from the card lists: 6 timeline beats, 3 leads, 2 seconds, 31 more."""
     return len(TIMELINE) + len(LEADS) + len(SECONDS) + len(MORE)
 
 
@@ -459,22 +457,94 @@ def _art(c: Canvas, kind: str, x0: float, y0: float, w: float, h: float) -> None
 # --------------------------------------------------------------------------
 
 
+def _lead(c: Canvas, audit: list, x0: float, y0: float, w: float, h: float,
+          number: int, item, big: bool) -> None:
+    art, kicker, headline, body = item
+    _box(c, x0, y0, x0 + w, y0 + h, fill=WHITE, outline=(51, 51, 51), width=1.0)
+
+    art_h = h * 0.5
+    _art(c, art, x0 + 1.0, y0 + 1.0, w - 2.0, art_h)
+
+    pad = 8.0 if big else 7.0
+    inner = w - pad * 2.0
+
+    # story number + kicker share a baseline under the art
+    ny = y0 + art_h + 17.0
+    ns = 30.0 if big else 24.0
+    nf = _ser(c, ns)
+    nw = c.width(str(number), nf)
+    _text(c, x0 + pad, ny, str(number), nf, fill=RED)
+    kf = _cap(c, 9.0 if big else 8.0)
+    c.tracked(x0 + pad + nw + 5.0, ny, kicker.upper(), kf, 0.5, fill=MUTED)
+
+    # serif headline, wrapped to at most 4 lines; pen advances by hs * 1.11
+    hs = 32.0 if big else 25.0
+    hf = _ser(c, hs)
+    hy = ny + 6.0 + c.cap_height(hf)
+    for line in _wrap_lines(c, headline, hf, inner, 4):
+        _text(c, x0 + pad, hy, line, hf)
+        audit.append(("lead_head", c.width(line, hf), inner))
+        hy += hs * 1.11
+
+    pf = _cap(c, 10.4, "regular")
+    py = hy + 2.0
+    room = y0 + h - 5.0 - py
+    line_h = 12.6
+    max_lines = max(0, int(room / line_h))
+    for line in _wrap_lines(c, body, pf, inner, max_lines):
+        _text(c, x0 + pad, py, line, pf, fill=(70, 76, 85))
+        audit.append(("lead_body", c.width(line, pf), inner))
+        py += line_h
+
+
+def _side_stack(c: Canvas, audit: list, x0: float, y0: float, w: float,
+                h: float) -> None:
+    gap = 10.0
+    bh = (h - gap) / 2.0
+    for i, item in enumerate(SECONDS):
+        art, kicker, headline, body = item
+        by0 = y0 + i * (bh + gap)
+        _box(c, x0, by0, x0 + w, by0 + bh, fill=WHITE,
+             outline=(51, 51, 51), width=1.0)
+
+        pad = 7.0
+        inner = w - pad * 2.0
+        kf = _cap(c, 8.6)
+        c.tracked(x0 + pad, by0 + 14.0, kicker.upper(), kf, 0.5, fill=MUTED)
+
+        hs = 21.0
+        hf = _ser(c, hs)
+        hy = by0 + 14.0 + 6.0 + c.cap_height(hf)
+        for line in _wrap_lines(c, headline, hf, inner, 3):
+            _text(c, x0 + pad, hy, line, hf)
+            audit.append(("side_head", c.width(line, hf), inner))
+            hy += hs * 1.11
+
+
 def _row3(c: Canvas, audit: list) -> None:
     y0, y1 = BAND_ROW3
     gap = 10.0
-    w = (CONTENT_W - gap * 2.0) / 3.0
-    for i, (art, kicker, head, body) in enumerate(LEADS):
-        x0 = CONTENT_X0 + i * (w + gap)
-        _card(c, audit, x0, y0, w, y1 - y0, i + 1, kicker, head, body, art, True)
+
+    band_h = y1 - y0
+    top_h = band_h * 0.53
+    top_w = (CONTENT_W - gap) / 2.0
+    for i in range(2):
+        x0 = CONTENT_X0 + i * (top_w + gap)
+        _lead(c, audit, x0, y0, top_w, top_h, i + 1, LEADS[i], True)
+
+    bot_y = y0 + top_h + gap
+    bot_h = y1 - bot_y
+    bot_w = CONTENT_W * 0.47
+    _lead(c, audit, CONTENT_X0, bot_y, bot_w, bot_h, 3, LEADS[2], False)
+
+    stack_x = CONTENT_X0 + bot_w + gap
+    stack_w = CONTENT_X1 - stack_x
+    _side_stack(c, audit, stack_x, bot_y, stack_w, bot_h)
 
 
 def _row4(c: Canvas, audit: list) -> None:
-    y0, y1 = BAND_ROW4
-    gap = 10.0
-    w = (CONTENT_W - gap * 3.0) / 4.0
-    for i, (art, kicker, head, body) in enumerate(SECONDS):
-        x0 = CONTENT_X0 + i * (w + gap)
-        _card(c, audit, x0, y0, w, y1 - y0, i + 4, kicker, head, body, art, False)
+    # band has zero height now; the second tier moved into the briefs list
+    return
 
 
 # --------------------------------------------------------------------------
@@ -518,9 +588,9 @@ def _bottom(c: Canvas, audit: list) -> None:
     head = _cap(c, 8.0)
     top = y0 + 10.0
     c.tracked(CONTENT_X0, top, "WHERE IT HAPPENED", head, 1.0)
-    _map(c, CONTENT_X0, top + 6.0, map_w, 168.0)
+    _map(c, CONTENT_X0, top + 6.0, map_w, 300.0)
     note = _cap(c, 6.4, "regular")
-    _text(c, CONTENT_X0, top + 186.0,
+    _text(c, CONTENT_X0, top + 312.0,
           "Red numbers mark the lead stories; grey dots mark the briefs opposite.",
           note, fill=MUTED)
 
@@ -529,19 +599,20 @@ def _bottom(c: Canvas, audit: list) -> None:
     c.tracked(list_x, top, "ALSO ON THURSDAY 19 NOVEMBER \u2014 %d MORE STORIES"
               % len(MORE), head, 1.0)
 
-    col_w = (list_w - 12.0) / 2.0
-    per_col = (len(MORE) + 1) // 2
-    num_f = _cap(c, 7.2)
-    city_f = _cap(c, 7.2)
-    body_f = _cap(c, 7.2, "regular")
-    row_h = 13.4
+    ncol = 3
+    col_w = (list_w - 12.0 * (ncol - 1)) / ncol
+    per_col = (len(MORE) + ncol - 1) // ncol
+    num_f = _cap(c, 9.0)
+    city_f = _cap(c, 9.0)
+    body_f = _cap(c, 9.0, "regular")
+    row_h = 17.4
     start = top + 14.0
     for i, (city, text) in enumerate(MORE):
         col = i // per_col
         row = i % per_col
         x0 = list_x + col * (col_w + 12.0)
         yy = start + row * row_h
-        label = "%d" % (i + 8)
+        label = "%d" % (i + 6)
         nw = c.width(label, num_f)
         _text(c, x0, yy, label, num_f, fill=RED)
         cw = c.tracked(x0 + nw + 4.0, yy, city.upper(), city_f, 0.3)
