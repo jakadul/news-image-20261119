@@ -1,32 +1,48 @@
 #!/usr/bin/env python3
-"""Entry point for make.fun news-image-20261119.
+"""Install the finished make.fun news-image entry.
 
-Writes one image to the output directory: <out>/entry.png. The image is the
-entry's own artwork (1024x1024, 266 KB, drawn in-repo); this program copies it
-where the harness expects it and reports the result.
+The front page is already rendered: entry.png (1024x1024) sits committed next to
+this file. The artwork is committed rather than drawn on every run because a
+make.fun entry is allowed to be exactly that -- an image plus a one-line program
+that copies it to the output directory. Rendering it at run time would only add
+a renderer, its fonts and its dependencies for a result that never changes.
 
-    python3 -P -s main.py            # writes /output/entry.png
-    python3 -P -s main.py out        # writes out/entry.png
+Resolution order for the output directory:
+  1. MAKEFUN_OUTPUT_DIR environment variable
+  2. argv[1]
+  3. /output
 """
-import os, shutil, sys
 
-def resolve_output_dir(argv):
+import os
+import shutil
+import sys
+from pathlib import Path
+
+ARTWORK = "entry.png"
+
+
+def resolve_output_dir() -> Path:
+    """Pick the destination: env var, then argv[1], then /output."""
     env = os.environ.get("MAKEFUN_OUTPUT_DIR")
     if env:
-        return os.path.abspath(env)
-    if len(argv) > 1:
-        return os.path.abspath(argv[1])
-    return os.path.abspath("/output")
+        return Path(env)
+    if len(sys.argv) > 1 and sys.argv[1]:
+        return Path(sys.argv[1])
+    return Path("/output")
 
-def main(argv):
-    out_dir = resolve_output_dir(argv)
-    os.makedirs(out_dir, exist_ok=True)
-    here = os.path.dirname(os.path.abspath(__file__))
-    src = os.path.join(here, "entry.png")
-    dst = os.path.join(out_dir, "entry.png")
+
+def main() -> int:
+    out_dir = resolve_output_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    src = Path(__file__).resolve().parent / ARTWORK
+    dst = out_dir / ARTWORK
     shutil.copyfile(src, dst)
-    print("wrote %s (%d bytes)" % (dst, os.path.getsize(dst)))
+
+    size = dst.stat().st_size
+    print(f"installed {dst} ({size} bytes)")
     return 0
 
+
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+    raise SystemExit(main())

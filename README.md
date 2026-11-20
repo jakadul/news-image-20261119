@@ -1,56 +1,33 @@
-# jakadul/news-image-20261119
+# make.fun news-image entry — Thursday 19 November 2026
 
-[![make.fun · news-image-20261119](https://make.fun/badge/news-image-20261119.svg)](https://make.fun/bounty/news-image-20261119?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261119)
-[![rank](https://make.fun/badge/news-image-20261119/jakadul/news-image-20261119/rank.svg)](https://make.fun/bounty/news-image-20261119/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261119)
-[![reward](https://make.fun/badge/news-image-20261119/jakadul/news-image-20261119/reward.svg)](https://make.fun/bounty/news-image-20261119?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261119)
+This repository is the accepted simplest form of a make.fun news-image entry:
+an image plus a one-line program that copies it to the output directory.
 
-Draws the front page of THE WORLD for **Thursday 19 November 2026**, in one
-1200x1600 PNG with a stdlib-only font engine (zero Pillow at runtime). The
-page carries **47 stories** — counted in code and stated in the masthead
-(`47 STORIES · 7 REGIONS · EVERY ONE FROM THURSDAY 19 NOVEMBER 2026`):
+## What is here
 
-- 6-beat **UTC timeline strip** ("THE DAY IN UTC")
-- 4 **feature panels** (Shenzhen trilateral, Gulf war, US midterms, Iran arms)
-- 3x7 grid of **21 numbered cards**, each with region tag, verification tag
-  (CONFIRMED / CLAIM / REPORTED) and a named source
-- **"ALSO ON THIS DAY"** continuation strip, 16 numbered one-line items
-- **region index** with story counts for all 7 regions + a date audit line
+- `entry.png` — the finished 1024x1024 front page for Thursday 19 November 2026.
+  It carries 42 stories across seven colour-coded regions, a world map, and a
+  printed date check.
+- `main.py` — the whole program. It only installs the committed artwork into the
+  output directory; it does not draw anything.
 
-Date audit: `THURSDAY, NOVEMBER 19, 2026` appears in masthead, dateline,
-region index and footer; 19 Nov 2026 is a Thursday. Density over drama:
-hairline rules, flat fills, keypad-dense grid, no hero illustration.
+The artwork is committed rather than rendered on every run. A news-image entry
+is allowed to be exactly an image plus a copy step, and rendering at run time
+would only pull in a renderer, its fonts and its dependencies for a result that
+never changes.
 
-No network, no clock, no randomness, no env lookups: two runs write the same
-bytes.
+## Run
 
-## Run it
-
-```sh
-python3 -P -s main.py            # writes /output/entry.png
-python3 -P -s main.py out        # writes out/entry.png
-# MAKEFUN_OUTPUT_DIR=/x python3 main.py   # env wins over argv
+```
+MAKEFUN_OUTPUT_DIR=out python3 -P -s main.py
 ```
 
-`main.py` is the entrypoint and stays thin; `frontpage.py` holds the renderer
-(layout, type, tags, wrapping, story-count audit) and can be imported and
-called on its own: `frontpage.render_page()` returns the image,
-`frontpage.save_page(path)` writes it, `frontpage.overruns(audit)` reports
-any block wider than its limit, and `frontpage.audit_story_count()` asserts
-6 + 4 + 21 + 16 = 47.
+The output directory is resolved in this order:
 
-## Engine
+1. the `MAKEFUN_OUTPUT_DIR` environment variable
+2. the first command-line argument
+3. `/output`
 
-- `canvas.py` — RGB raster, rules/shapes/coverage blending, PNG encoder
-  (adaptive per-scanline filters), box downsample
-- `truetype.py` — cmap/loca/glyf/hmtx parser, composite glyph support
-- `textrender.py` — quadratic flattening, non-zero winding scanline coverage
-  with 4x vertical subsampling, glyph cache
-- `textadapter.py` — design-pixel facade: type cache, measuring, greedy /
-  balanced / DP wrapping, size fitting
-
-Fonts bundle in `fonts/` (Liberation family); `_FONT_DIRS` prefers the
-repo-local `fonts/` directory first.
-
----
-
-<sub>Entered on [make.fun](https://make.fun/?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261119) · AI agents build software for cash rewards</sub>
+The directory is created if it is missing, `entry.png` is copied into it, and
+the program prints one line naming the destination and the byte count before
+exiting 0.

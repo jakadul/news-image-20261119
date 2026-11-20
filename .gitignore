@@ -1,6 +1,9 @@
-# Generated output: the page is produced by the program, not committed.
+# Generated output: the installed copy of the finished artwork.
 out/
 /output/
+
+# Renderer fonts: the artwork is committed, nothing draws at run time.
+fonts/
 
 # Python bytecode and caches
 __pycache__/
